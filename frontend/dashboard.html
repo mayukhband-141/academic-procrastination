@@ -7,7 +7,7 @@
   <title>Academic Procrastination Calculator</title>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.4.1/dist/css/bootstrap.min.css"
     integrity="sha384-Vkoo8x4CGsO3+Hhxv8T/Q5PaXtkKtu6ug5TOeNV6gBiFeWPGFN9MuhOf23Q9Ifjh" crossorigin="anonymous">
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="./style.css">
 </head>
 
 <body>
@@ -322,36 +322,90 @@
       }
       
       try {
+        // 1. Ensure student exists in Database
+        await fetch("http://127.0.0.1:8000/students/create", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ fullname: "Demo Student", email: "demo@student.edu" })
+        }).catch(function(){});
+
+        // 2. Persist Course Assignment directly to SQLite Database
+        await fetch("http://127.0.0.1:8000/courses/create-course?user_id=1", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user_id: 1,
+            subject: task.course + ": " + task.title,
+            assigned_at: task.assigned,
+            due: task.due,
+            submitted: task.submitted,
+            reschedules: task.reschedules
+          })
+        }).catch(function(){});
+
         var response = await fetch("http://127.0.0.1:8000/analyze", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify([task])
+          body: JSON.stringify({ user_id: 1 })
         });
         if (!response.ok) throw new Error("API request failed with status " + response.status);
+        
         var data = await response.json();
-        var taskScore = (data.scores && data.scores[0]) ? data.scores[0] : {};
-        var scoreVal = Math.round((taskScore.score || 0) * 100);
-        var label = data.label || "none";
-        var riskClass = label === "chronic" ? "danger" : label === "emerging" ? "warning" : "success";
-        var riskLevel = label === "chronic" ? "High Risk (Chronic)" : label === "emerging" ? "Moderate Risk (Emerging)" : "Low Risk (Healthy)";
-
-        var result = {
-          score: scoreVal,
-          riskLevel: riskLevel,
-          riskClass: riskClass,
-          startLagPercent: Math.round((taskScore.start_delay_ratio || 0) * 100),
-          compressionPercent: Math.round(((taskScore.start_delay_ratio || 0) * 0.7) * 100),
-          reschedules: taskScore.reschedules || 0,
-          isLate: taskScore.is_late || false,
-          advice: data.explanation || "Evaluation completed."
-        };
-        displayResults(task, result);
-        assignmentHistory.unshift({ task: task, result: result });
-        renderHistoryTable();
+        updateDashboardFromDBData(data, task);
       } catch (err) {
         alert("Error connecting to backend API: " + err.message);
       }
     });
+
+    function updateDashboardFromDBData(data, currentTask) {
+      var scoresList = data.scores || [];
+      var label = data.label || "none";
+      var riskClass = label === "chronic" ? "danger" : label === "emerging" ? "warning" : "success";
+      var riskLevel = label === "chronic" ? "High Risk (Chronic)" : label === "emerging" ? "Moderate Risk (Emerging)" : "Low Risk (Healthy)";
+
+      assignmentHistory = scoresList.map(function(s) {
+        return {
+          task: {
+            course: s.course.split(':')[0] || s.course,
+            title: s.course.split(':')[1] || "Assignment",
+            due: s.due || new Date().toISOString()
+          },
+          result: {
+            score: Math.round((s.score || 0) * 100),
+            riskLevel: riskLevel,
+            riskClass: riskClass,
+            startLagPercent: Math.round((s.start_delay_ratio || 0) * 100),
+            compressionPercent: Math.round(((s.start_delay_ratio || 0) * 0.7) * 100),
+            reschedules: s.reschedules || 0,
+            isLate: s.is_late || false,
+            advice: data.explanation || "Evaluation completed."
+          }
+        };
+      });
+
+      if (assignmentHistory.length > 0) {
+        displayResults(currentTask || assignmentHistory[0].task, assignmentHistory[0].result);
+      }
+      renderHistoryTable();
+    }
+
+    // Dynamic Database Loader on Page Load / Refresh
+    async function loadHistoryFromDatabase() {
+      try {
+        var response = await fetch("http://127.0.0.1:8000/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ user_id: 1 })
+        });
+        if (response.ok) {
+          var data = await response.json();
+          if (data.scores && data.scores.length > 0) {
+            updateDashboardFromDBData(data);
+          }
+        }
+      } catch(e) {}
+    }
+
     document.getElementById('btnFillSample').addEventListener('click', function () {
       var now = new Date();
       var assigned = new Date(now.getTime() - (7 * 24 * 60 * 60 * 1000));
@@ -382,7 +436,9 @@
       assignmentHistory = [];
       renderHistoryTable();
     });
-    renderHistoryTable();
+
+    // Load history dynamically from SQLite Database on page refresh
+    loadHistoryFromDatabase();
   </script>
 </body>
 

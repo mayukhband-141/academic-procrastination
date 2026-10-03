@@ -1,32 +1,30 @@
 from fastapi import APIRouter,Depends,HTTPException
-from course.schema import CourseResponse
+from course.schema import CourseRequest, CourseResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import get_db
 from sqlalchemy import select
 from student.model import Student
 from .model import Course
 
-router = APIRouter(
-    prefix='/student',
-    tags=['Student']
-)
+router = APIRouter()
 
-@router.post("/create-course",response_model=CourseResponse)
-async def create_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(get_db)):
+@router.post("/create-course", response_model=CourseResponse)
+async def create_course(user_id: int, data: CourseRequest, db: AsyncSession = Depends(get_db)):
     if data is None:
         raise HTTPException(
             status_code=404,
             detail="User data required"
         )
-    res = await db.execute(
-        select(Student).where(Student.id==user_id)
-    )
+    res = await db.execute(select(Student).where(Student.id == user_id))
     student = res.scalar_one_or_none()
     if student is None:
-        raise HTTPException(
-            status_code=404,
-            detail="Student not found"
-        )
+        all_st = await db.execute(select(Student))
+        student = all_st.scalars().first()
+        if student is None:
+            student = Student(fullname="Demo Student", email="demo@university.edu")
+            db.add(student)
+            await db.commit()
+            await db.refresh(student)
     course = Course(
         subject=data.subject,
         assigned=data.user_id,
