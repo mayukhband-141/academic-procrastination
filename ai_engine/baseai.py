@@ -23,7 +23,7 @@ agent = create_agent(
 )
 
 result = agent.invoke(
-    {"messages": [{"role": "user", "content": "What's the weather in San Francisco?"}]}
+    {"messages": [{"role": "user","content":"Analyse the data with the tool_call and  ur intenal maths then output result"}]}
 )
 print(result["messages"][-1].content_blocks)
 
