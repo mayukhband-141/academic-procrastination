@@ -1,8 +1,10 @@
 from langchain.agents import create_agent
 from .tool import get_score
 import os
+from dotenv import load_dotenv
+load_dotenv()
+MODEL_NAME = os.getenv("AI_MODEL_NAME", "gemini-2.5-flash")
 
-MODEL_NAME = os.getenv("AI_MODEL_NAME", "gpt-4o")
 SYSYTEM_PROMPT = """"
     You are a dedicated agent for the  Detecting Academic Procrastination Patterns.
     description: a system that analyses a sequence of a student's academic activities 
