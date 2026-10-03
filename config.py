@@ -1,13 +1,20 @@
- #Fallback init weights, @sougata need to tune it after testing 
+from pathlib import Path
+
+# Paths (environment-agnostic)
+BASE_DIR = Path(__file__).resolve().parent
+MODELS_DIR = BASE_DIR / "models"
+DASHBOARD_PAYLOADS_PATH = MODELS_DIR / "dashboard_demo_payloads.pt"
+
+# Fallback init weights, @sougata need to tune it after testing 
 WEIGHT_DELAY = 0.50
 WEIGHT_LATE = 0.30
 WEIGHT_RESCHEDULES = 0.20
 
-       #fallbackthresholds
+#fallbackthresholds
 HIGH_PROCRASTINATION_THRESHOLD = 0.60
 CHRONIC_RATIO_THRESHOLD = 0.65
 EMERGING_RATIO_THRESHOLD = 0.30
 
-  #Serverinfo
+#Serverinfo
 HOST = "127.0.0.1"
 PORT = 8000
