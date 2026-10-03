@@ -1,5 +1,5 @@
 from langchain.agents import create_agent
-
+from .tool import get_score
 
 SYSYTEM_PROMPT = """"
     You are a dedicated agent for the  Detecting Academic Procrastination Patterns.
@@ -13,12 +13,17 @@ SYSYTEM_PROMPT = """"
 ]
 and your output will be like this :
 {"label":"emerging","onset_index":4,"onset_task":"A5","baseline":0.18,"tasks":[{"task_id":"subj1","course":"Math","score":0.71,"start_lag":0.95,"late":1,"reschedules":2}]}
+use the get_score tool to get the details of all
 """
 
 agent = create_agent(
-    model="",
-    tools=[],
-    system_prompt=SYSYTEM_PROMPT
+    model="openai:gpt-5.5",
+    tools=[get_score],
+    system_prompt="You are a helpful assistant",
 )
 
+result = agent.invoke(
+    {"messages": [{"role": "user", "content": "What's the weather in San Francisco?"}]}
+)
+print(result["messages"][-1].content_blocks)
 
