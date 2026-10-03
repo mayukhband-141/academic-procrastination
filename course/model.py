@@ -1,10 +1,10 @@
-from sqlalchemy.orm import mapped_column, Mapped, relationship   
-from sqlalchemy import ForeignKey
-from database.db import Base
-from typing import List
+from typing import List, TYPE_CHECKING
 from datetime import datetime
-from student.model import Student
-
+from sqlalchemy import ForeignKey
+from sqlalchemy.orm import mapped_column, Mapped, relationship   
+from database.db import Base
+if TYPE_CHECKING:
+    from student.model import Student
 class Course(Base):
     __tablename__ = "courses"
     id: Mapped[int] = mapped_column(primary_key=True)
