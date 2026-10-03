@@ -19,7 +19,7 @@ use the get_score tool to get the details of all
 agent = create_agent(
     model="openai:gpt-5.5",
     tools=[get_score],
-    system_prompt="You are a helpful assistant",
+    system_prompt=SYSYTEM_PROMPT,
 )
 
 result = agent.invoke(
