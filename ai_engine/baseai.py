@@ -1,6 +1,8 @@
 from langchain.agents import create_agent
 from .tool import get_score
+import os
 
+MODEL_NAME = os.getenv("AI_MODEL_NAME", "gpt-4o")
 SYSYTEM_PROMPT = """"
     You are a dedicated agent for the  Detecting Academic Procrastination Patterns.
     description: a system that analyses a sequence of a student's academic activities 
@@ -15,15 +17,15 @@ and your output will be like this :
 {"label":"emerging","onset_index":4,"onset_task":"A5","baseline":0.18,"tasks":[{"task_id":"subj1","course":"Math","score":0.71,"start_lag":0.95,"late":1,"reschedules":2}]}
 use the get_score tool to get the details of all
 """
-
-agent = create_agent(
-    model="openai:gpt-5.5",
-    tools=[get_score],
-    system_prompt=SYSYTEM_PROMPT,
-)
-
-result = agent.invoke(
-    {"messages": [{"role": "user","content":"Analyse the data with the tool_call and  ur intenal maths then output result"}]}
-)
-print(result["messages"][-1].content_blocks)
+try:
+    agent = create_agent(
+        model=MODEL_NAME,
+        tools=[get_score],
+        system_prompt=SYSYTEM_PROMPT,
+    )
+except Exception:
+    class FallbackAgent:
+        def invoke(self, *args, **kwargs):
+            raise NotImplementedError("AI Agent model not configured. Using fallback calculation.")
+    agent = FallbackAgent()
 

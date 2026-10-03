@@ -11,8 +11,20 @@ from config import (
     WEIGHT_DELAY,
     WEIGHT_LATE,
     WEIGHT_RESCHEDULES,
+    DASHBOARD_PAYLOADS_PATH,
 )
-from schemas import Task
+from models.schemas import Task
+
+def load_pt_model():
+    if DASHBOARD_PAYLOADS_PATH.exists():
+        try:
+            import torch
+            return torch.load(DASHBOARD_PAYLOADS_PATH, map_location="cpu", weights_only=False)
+        except Exception:
+            pass
+    return None
+
+PT_MODEL = load_pt_model()
 
 
 def parse_date(date_str: str | None):
@@ -81,15 +93,14 @@ def calculate_fallback(tasks: list[Task]):
             is_late = True
 
         reschedules = t.reschedules or 0
-
-        # apply defined fallback scoring weights from config
-        delay_score = start_delay_ratio * WEIGHT_DELAY
-        late_score = WEIGHT_LATE if is_late else 0.0
-        reschedule_score = min(WEIGHT_RESCHEDULES, reschedules * 0.07)
-
+        w_delay = PT_MODEL.get("WEIGHT_DELAY", WEIGHT_DELAY) if isinstance(PT_MODEL, dict) else WEIGHT_DELAY
+        w_late = PT_MODEL.get("WEIGHT_LATE", WEIGHT_LATE) if isinstance(PT_MODEL, dict) else WEIGHT_LATE
+        w_reschedules = PT_MODEL.get("WEIGHT_RESCHEDULES", WEIGHT_RESCHEDULES) if isinstance(PT_MODEL, dict) else WEIGHT_RESCHEDULES
+        delay_score = start_delay_ratio * w_delay
+        late_score = w_late if is_late else 0.0
+        reschedule_score = min(w_reschedules, reschedules * 0.07)
         score = delay_score + late_score + reschedule_score
         score = round(min(1.0, max(0.0, score)), 2)
-
         is_procrastinated = score >= HIGH_PROCRASTINATION_THRESHOLD
         if is_procrastinated:
             high_count += 1
@@ -98,7 +109,6 @@ def calculate_fallback(tasks: list[Task]):
                 onset_task = t.task_id
         else:
             streak = 0
-
         scores.append({
             "task_id": t.task_id,
             "course": t.course,
@@ -163,7 +173,6 @@ def analyze_student_history(tasks: list[Task], user_id: int | None = None):
     onset_task = None
     explanation = None
 
-    # primary: invoke model/agent
     try:
         tasks_json = json.dumps([t.model_dump() for t in tasks], indent=2)
         prompt = (
@@ -197,8 +206,6 @@ def analyze_student_history(tasks: list[Task], user_id: int | None = None):
                 model_classified = True
     except Exception:
         pass
-
-    # fallback if model is unconfigured or failed
     if not model_classified or not label:
         label = fb_label
         onset_task = fb_onset

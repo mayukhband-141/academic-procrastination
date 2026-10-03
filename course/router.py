@@ -21,7 +21,7 @@ async def create_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(
     res = await db.execute(
         select(Student).where(Student.id==user_id)
     )
-    student = res.scalar_one_or_none
+    student = res.scalar_one_or_none()
     if student is None:
         raise HTTPException(
             status_code=404,
@@ -32,16 +32,17 @@ async def create_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(
         assigned=data.user_id,
         assigned_at=data.assigned_at,
         submitted = data.submitted,
-        due_data=data.due,
-        rescedules= data.reschedules
+        due_date=data.due,
+        reschedules= data.reschedules
     )
     db.add(course)
     await db.commit()
     await db.refresh(course)
     await db.refresh(student)
+    return course
 
 @router.post("/update-course",response_model=CourseResponse)
-async def create_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(get_db)):
+async def update_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(get_db)):
     if data is None:
         raise HTTPException(
             status_code=404,
@@ -50,7 +51,7 @@ async def create_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(
     res = await db.execute(
         select(Student).where(Student.id==user_id)
     )
-    student = res.scalar_one_or_none
+    student = res.scalar_one_or_none()
     if student is None:
         raise HTTPException(
             status_code=404,
@@ -61,8 +62,8 @@ async def create_course(user_id:int,data:CourseResponse,db:AsyncSession=Depends(
         assigned=data.user_id,
         assigned_at=data.assigned_at,
         submitted = data.submitted,
-        due_data=data.due,
-        rescedules= data.reschedules
+        due_date=data.due,
+        reschedules= data.reschedules
     )
     db.add(course)
     await db.commit()

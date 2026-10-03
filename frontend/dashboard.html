@@ -304,25 +304,52 @@
         tbody.appendChild(tr);
       });
     }
-    document.getElementById('procrastinationForm').addEventListener('submit', function (e) {
+    document.getElementById('procrastinationForm').addEventListener('submit', async function (e) {
       e.preventDefault();
       var task = {
+        task_id: "T-" + (assignmentHistory.length + 1),
         course: document.getElementById('courseInput').value.trim(),
-        title: document.getElementById('titleInput').value.trim(),
         assigned: document.getElementById('assignedInput').value,
         due: document.getElementById('dueInput').value,
-        firstActivity: document.getElementById('firstActivityInput').value,
-        submitted: document.getElementById('submittedInput').value,
-        reschedules: document.getElementById('reschedulesInput').value
+        first_activity: document.getElementById('firstActivityInput').value || null,
+        submitted: document.getElementById('submittedInput').value || null,
+        reschedules: parseInt(document.getElementById('reschedulesInput').value) || 0
       };
       if (new Date(task.assigned) >= new Date(task.due)) {
         alert('Due date must be after the assigned date.');
         return;
       }
-      var result = calculateProcrastination(task);
-      displayResults(task, result);
-      assignmentHistory.unshift({ task: task, result: result });
-      renderHistoryTable();
+      
+      try {
+        var response = await fetch("http://127.0.0.1:8000/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify([task])
+        });
+        if (!response.ok) throw new Error("API request failed with status " + response.status);
+        var data = await response.json();
+        var taskScore = (data.scores && data.scores[0]) ? data.scores[0] : {};
+        var scoreVal = Math.round((taskScore.score || 0) * 100);
+        var label = data.label || "none";
+        var riskClass = label === "chronic" ? "danger" : label === "emerging" ? "warning" : "success";
+        var riskLevel = label === "chronic" ? "High Risk (Chronic)" : label === "emerging" ? "Moderate Risk (Emerging)" : "Low Risk (Healthy)";
+
+        var result = {
+          score: scoreVal,
+          riskLevel: riskLevel,
+          riskClass: riskClass,
+          startLagPercent: Math.round((taskScore.start_delay_ratio || 0) * 100),
+          compressionPercent: Math.round(((taskScore.start_delay_ratio || 0) * 0.7) * 100),
+          reschedules: taskScore.reschedules || 0,
+          isLate: taskScore.is_late || false,
+          advice: data.explanation || "Evaluation completed."
+        };
+        displayResults(task, result);
+        assignmentHistory.unshift({ task: task, result: result });
+        renderHistoryTable();
+      } catch (err) {
+        alert("Error connecting to backend API: " + err.message);
+      }
     });
     document.getElementById('btnFillSample').addEventListener('click', function () {
       var now = new Date();

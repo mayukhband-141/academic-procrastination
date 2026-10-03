@@ -8,7 +8,7 @@ async def get_score(userid:int,db:AsyncSession):
     result = await db.execute(
         select(Student).where(userid == Student.id)
     )
-    user = await result.scalar_one_or_none()
+    user = result.scalar_one_or_none()
     if user is None:
         return HTTPException(
             status_code=404,
@@ -17,6 +17,6 @@ async def get_score(userid:int,db:AsyncSession):
     course_res = await db.execute(
         select(Course).where(Course.assigned == userid)
     )
-    courses = await course_res.scalars().all()
+    courses = course_res.scalars().all()
     return courses
 
